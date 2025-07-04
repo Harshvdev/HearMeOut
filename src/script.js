@@ -1,19 +1,12 @@
 // =====================================================================
-// 1. IMPORTS - All necessary functions from the Firebase SDK
+// 1. IMPORTS
 // =====================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    serverTimestamp,
-    query,
-    orderBy,
-    onSnapshot,
-    doc,
-    updateDoc,
-    increment
+    getFirestore, collection, addDoc, serverTimestamp,
+    query, orderBy, onSnapshot, doc, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
 // =====================================================================
 // 2. FIREBASE SETUP
 // =====================================================================
@@ -29,24 +22,48 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// =====================================================================
+// 3. CONSTANTS & STATE
+// =====================================================================
+const MAX_WORDS = 200;
+const MAX_CHARS = 1200;
+const POST_COOLDOWN_SECONDS = 60;
 
-// =====================================================================
-// 3. HTML ELEMENT REFERENCES & IN-MEMORY STATE
-// =====================================================================
+// --- HTML Element References
+const postForm = document.getElementById('post-form');
 const postContent = document.getElementById('post-content');
 const shareButton = document.getElementById('share-button');
 const postFeed = document.getElementById('post-feed');
+const charCounter = document.getElementById('char-counter');
+const feedbackMessage = document.getElementById('feedback-message');
 
-// This Set holds the IDs of posts currently being reported.
-// It prevents multiple clicks while a request is processing.
+// --- In-Memory State
 const reportingInProgress = new Set();
 
-
 // =====================================================================
-// 4. FUNCTION DEFINITIONS - All functions are defined here first
+// 4. FUNCTION DEFINITIONS (All functions from previous step are unchanged)
 // =====================================================================
 
-// --- LOCAL STORAGE HELPER FUNCTIONS ---
+function showFeedback(message, type = 'error', duration = 3000) {
+    feedbackMessage.textContent = message;
+    feedbackMessage.className = `feedback-message ${type}`;
+    setTimeout(() => {
+        feedbackMessage.textContent = '';
+        feedbackMessage.className = 'feedback-message';
+    }, duration);
+}
+
+function updateCharCounter() {
+    const count = postContent.value.length;
+    charCounter.textContent = `${count} / ${MAX_CHARS}`;
+    charCounter.classList.toggle('limit-near', count > MAX_CHARS * 0.9);
+    charCounter.classList.toggle('limit-exceeded', count > MAX_CHARS);
+}
+
+function setFeedStatus(message) {
+    postFeed.innerHTML = `<p class="feed-status">${message}</p>`;
+}
+
 function getReportedPostsFromStorage() {
     const reported = localStorage.getItem('reportedPosts');
     return reported ? JSON.parse(reported) : [];
@@ -60,121 +77,145 @@ function addPostToReportedStorage(postId) {
     }
 }
 
-// --- MAIN APPLICATION FUNCTIONS ---
-async function handlePostSubmission() {
+async function handlePostSubmission(event) {
+    event.preventDefault();
+    const lastPostTime = localStorage.getItem('lastPostTimestamp');
+    if (lastPostTime) {
+        const secondsSinceLastPost = (Date.now() - parseInt(lastPostTime)) / 1000;
+        if (secondsSinceLastPost < POST_COOLDOWN_SECONDS) {
+            const secondsRemaining = Math.ceil(POST_COOLDOWN_SECONDS - secondsSinceLastPost);
+            showFeedback(`Please wait ${secondsRemaining}s to post again.`, 'error');
+            return;
+        }
+    }
     const content = postContent.value.trim();
+    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
     if (content === '') {
-        alert("You can't share an empty thought!");
+        showFeedback("You can't share an empty thought!", 'error');
+        return;
+    }
+    if (wordCount > MAX_WORDS) {
+        showFeedback(`Post exceeds the ${MAX_WORDS}-word limit.`, 'error');
         return;
     }
     shareButton.disabled = true;
     shareButton.textContent = "Sharing...";
     try {
-        const newPost = {
+        await addDoc(collection(db, 'posts'), {
             content: content,
             timestamp: serverTimestamp(),
             reportCount: 0
-        };
-        const postsCollectionRef = collection(db, 'posts');
-        await addDoc(postsCollectionRef, newPost);
+        });
         postContent.value = '';
+        updateCharCounter();
+        showFeedback('Your post was shared!', 'success');
+        localStorage.setItem('lastPostTimestamp', Date.now().toString());
     } catch (error) {
         console.error("Error adding document: ", error);
-        alert("Sorry, there was an error sharing your post. Please try again.");
+        showFeedback("Error sharing your post. Try again.", 'error');
     } finally {
         shareButton.disabled = false;
         shareButton.textContent = "Share Anonymously";
     }
 }
 
+async function handleReportClick(event) {
+    const button = event.target;
+    if (!button.classList.contains('report-button') || button.disabled) return;
+    const postId = button.dataset.id;
+    const postCard = button.closest('.post-card');
+    if (reportingInProgress.has(postId)) return;
+    reportingInProgress.add(postId);
+    button.disabled = true;
+    button.textContent = "Reported";
+    try {
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, { reportCount: increment(1) });
+        addPostToReportedStorage(postId);
+        postCard.classList.add('hidden');
+        setTimeout(() => postCard.remove(), 300);
+    } catch (error) {
+        console.error("Error reporting post: ", error);
+        button.disabled = false;
+        button.textContent = "Report";
+        showFeedback("Failed to report post. Please try again.", 'error');
+    } finally {
+        reportingInProgress.delete(postId);
+    }
+}
+
+function createPostCard(postData, postId) {
+    const reportedPostsLocally = getReportedPostsFromStorage();
+    if (reportedPostsLocally.includes(postId) || postData.reportCount >= 3) {
+        return null;
+    }
+    const card = document.createElement('div');
+    card.classList.add('post-card');
+    card.dataset.postId = postId;
+    const reportButton = document.createElement('button');
+    reportButton.classList.add('report-button');
+    reportButton.textContent = 'Report';
+    reportButton.dataset.id = postId;
+    reportButton.setAttribute('aria-label', `Report post starting with: ${postData.content.substring(0, 20)}`);
+    if (reportingInProgress.has(postId)) {
+        reportButton.disabled = true;
+        reportButton.textContent = "Reported";
+    }
+    const contentP = document.createElement('p');
+    contentP.textContent = postData.content;
+    card.appendChild(reportButton);
+    card.appendChild(contentP);
+    return card;
+}
+
 function listenForPosts() {
-    const postsCollectionRef = collection(db, 'posts');
-    const q = query(postsCollectionRef, orderBy('timestamp', 'desc'));
-
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
     onSnapshot(q, (snapshot) => {
-        const reportedPostsLocally = getReportedPostsFromStorage();
+        if (snapshot.empty) {
+            setFeedStatus("No thoughts shared yet. Be the first!");
+            return;
+        }
         postFeed.innerHTML = '';
-        
         snapshot.forEach((doc) => {
-            const postData = doc.data();
-            const postId = doc.id;
-
-            if (postData.reportCount < 3) {
-                const card = document.createElement('div');
-                card.classList.add('post-card');
-                
-                const reportButton = document.createElement('button');
-                reportButton.classList.add('report-button');
-                reportButton.textContent = 'Report';
-                reportButton.dataset.id = postId;
-
-                // --- THE FINAL FIX ---
-                // A button should be disabled if EITHER the report is already
-                // saved in localStorage OR a report is currently in-flight.
-                // This correctly handles the UI re-render during the race condition.
-                if (reportedPostsLocally.includes(postId) || reportingInProgress.has(postId)) {
-                    reportButton.disabled = true;
-                    reportButton.textContent = "Reported";
-                }
-
-                const contentP = document.createElement('p');
-                contentP.textContent = postData.content;
-
-                card.appendChild(reportButton);
-                card.appendChild(contentP);
-                postFeed.appendChild(card);
+            const postCardElement = createPostCard(doc.data(), doc.id);
+            if (postCardElement) {
+                postFeed.appendChild(postCardElement);
             }
         });
     }, (error) => {
         console.error("Error listening to post updates: ", error);
-        postFeed.innerHTML = '<p style="color: red;">Could not fetch posts. Please try again later.</p>';
+        setFeedStatus("Could not fetch posts. Please check your connection and try again later.");
     });
 }
 
-
 // =====================================================================
-// 5. SCRIPT EXECUTION - Event listeners and initial function calls
+// 5. SCRIPT EXECUTION
 // =====================================================================
-listenForPosts();
+document.addEventListener('DOMContentLoaded', () => {
+    setFeedStatus("Loading thoughts...");
+    listenForPosts();
 
-shareButton.addEventListener('click', async (event) => {
-    event.preventDefault();
-    await handlePostSubmission();
-});
+    postForm.addEventListener('submit', handlePostSubmission);
+    postContent.addEventListener('input', updateCharCounter);
+    postFeed.addEventListener('click', handleReportClick);
 
-postFeed.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('report-button') && !event.target.disabled) {
-        const postId = event.target.dataset.id;
-        
-        // Immediately check the in-progress lock. This stops rapid-fire clicks.
-        if (reportingInProgress.has(postId)) {
-            return; 
+    // --- REPLACED: Keydown listener with new chat-style logic ---
+    postContent.addEventListener('keydown', (event) => {
+        // If the user presses Shift + Enter, allow the default behavior (new line)
+        if (event.key === 'Enter' && event.shiftKey) {
+            return; // Do nothing, let the browser add a new line.
         }
 
-        // Add the post to the in-progress set to lock it.
-        reportingInProgress.add(postId);
+        // If the user presses only Enter...
+        if (event.key === 'Enter') {
+            // ...prevent the default behavior (which is to add a new line).
+            event.preventDefault();
 
-        // Visually disable the button immediately. This is an optimistic UI update.
-        event.target.disabled = true;
-        event.target.textContent = "Reported";
-
-        try {
-            const postRef = doc(db, 'posts', postId);
-            await updateDoc(postRef, {
-                reportCount: increment(1)
-            });
-            
-            // On success, save to persistent storage.
-            addPostToReportedStorage(postId);
-
-        } catch (error) {
-            console.error("Error reporting post: ", error);
-            // On failure, we don't re-enable the button here. The onSnapshot listener
-            // will re-render the feed, and since the report failed, the button will
-            // be correctly rendered as enabled (as it's not in localStorage).
-        } finally {
-            // Always remove the post from the in-progress set after the operation.
-            reportingInProgress.delete(postId);
+            // If the share button is not already disabled (e.g., from a cooldown),
+            // programmatically click it to submit the post.
+            if (!shareButton.disabled) {
+                shareButton.click();
+            }
         }
-    }
+    });
 });

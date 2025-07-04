@@ -33,6 +33,18 @@ header h1 {
     margin-bottom: 50px;
 }
 
+/* Visually hidden class for accessibility */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
 #post-content {
     width: 100%;
     padding: 15px;
@@ -52,6 +64,38 @@ header h1 {
     box-shadow: 0 0 0 2px #E7F3FF; /* Soft blue glow on focus */
 }
 
+/* NEW: Footer for the form (counter and messages) */
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #606770;
+    padding: 0 5px;
+    margin-bottom: 15px;
+}
+
+#feedback-message {
+    font-weight: 600;
+}
+
+#feedback-message.error {
+    color: #d93025; /* Red for errors */
+}
+
+#feedback-message.success {
+    color: #1e8e3e; /* Green for success */
+}
+
+#char-counter.limit-near {
+    color: #f29900; /* Amber when nearing limit */
+    font-weight: 600;
+}
+#char-counter.limit-exceeded {
+    color: #d93025; /* Red when over limit */
+    font-weight: 600;
+}
+
 #share-button {
     width: 100%;
     padding: 12px 20px;
@@ -69,6 +113,12 @@ header h1 {
     background-color: #0655d4; /* A slightly darker blue for hover */
 }
 
+#share-button:disabled {
+    background-color: #e4e6eb;
+    color: #bcc0c4;
+    cursor: not-allowed;
+}
+
 
 /* Post Feed Section */
 .post-card {
@@ -79,6 +129,15 @@ header h1 {
     margin-bottom: 20px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     overflow: hidden; /* Contains the floated button */
+    transition: opacity 0.3s ease-in-out; /* For smooth hiding */
+}
+
+.post-card.hidden {
+    opacity: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
 }
 
 .post-card p {
@@ -105,4 +164,18 @@ header h1 {
 .report-button:hover {
     background-color: #e4e6eb;
     border-color: #ccd0d5;
+}
+
+.report-button:disabled {
+    background-color: #e4e6eb;
+    color: #bcc0c4;
+    cursor: default;
+}
+
+/* NEW: Styles for feed status messages (loading, empty) */
+.feed-status {
+    text-align: center;
+    color: #606770;
+    font-size: 1.1em;
+    padding: 40px 20px;
 }
