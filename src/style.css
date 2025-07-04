@@ -1,0 +1,108 @@
+/* General Body & Font Styles */
+body {
+    background-color: #F0F2F5;
+    color: #1c1e21;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Main Layout Container */
+main {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* Header */
+header h1 {
+    text-align: center;
+    color: #1c1e21;
+    font-weight: 300;
+    font-size: 2.8em;
+    letter-spacing: 1px;
+    margin-bottom: 40px;
+}
+
+/* Submission Form Area */
+.submission-area {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 50px;
+}
+
+#post-content {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #dddfe2;
+    border-radius: 8px;
+    font-size: 17px;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box; /* Important for width: 100% */
+    font-family: inherit;
+    margin-bottom: 10px;
+}
+
+#post-content:focus {
+    outline: none;
+    border-color: #0866FF;
+    box-shadow: 0 0 0 2px #E7F3FF; /* Soft blue glow on focus */
+}
+
+#share-button {
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #0866FF;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+#share-button:hover {
+    background-color: #0655d4; /* A slightly darker blue for hover */
+}
+
+
+/* Post Feed Section */
+.post-card {
+    background-color: #ffffff;
+    border: 1px solid #dddfe2;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden; /* Contains the floated button */
+}
+
+.post-card p {
+    margin: 0;
+    color: #1c1e21;
+    overflow-wrap: break-word; /* Prevents long text from overflowing */
+}
+
+.report-button {
+    float: right;
+    margin-left: 15px;
+    margin-bottom: 5px;
+    background-color: #F0F2F5;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #606770;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.report-button:hover {
+    background-color: #e4e6eb;
+    border-color: #ccd0d5;
+}

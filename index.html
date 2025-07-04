@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HearMeOuttt</title>
+  
+  <!-- CORRECTED PATH: Assumes 'src' folder is in the same directory as index.html -->
+  <link rel="stylesheet" href="src/style.css" />
+
+</head>
+<body>
+
+  <header>
+    <h1>HearMeOuttt</h1>
+  </header>
+
+  <main>
+    <!-- Section for submitting a new post -->
+    <section class="submission-area">
+      <form id="post-form">
+        <textarea id="post-content" name="post-content" rows="6"
+          placeholder="Share your thoughts, confessions, or feelings anonymously..."></textarea>
+        <button type="submit" id="share-button">Share Anonymously</button>
+      </form>
+    </section>
+
+    <!-- Section for displaying the feed of posts -->
+    <section class="feed-area">
+      <div id="post-feed">
+        <!-- Posts will be rendered here by JavaScript -->
+      </div>
+    </section>
+  </main>
+
+  <!-- CORRECTED PATH: Same as the stylesheet path -->
+  <script type="module" src="src/script.js"></script>
+
+</body>
+</html>
