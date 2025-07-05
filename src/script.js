@@ -171,7 +171,7 @@ function listenForPosts() {
     });
 }
 
-// [UPDATED] This function now manually sets the FINAL button text to 'Reported' on success.
+// [UPDATED] This function now correctly updates the button's final state.
 async function handleReportClick(e) {
     if (!e.target.classList.contains('report-button')) return;
 
@@ -180,6 +180,7 @@ async function handleReportClick(e) {
     
     if (btn.disabled) return;
     
+    // Check localStorage one last time for safety.
     const reportedInStorage = JSON.parse(localStorage.getItem('reportedPosts')) || [];
     if (reportedInStorage.includes(postId)) {
         btn.disabled = true;
@@ -202,18 +203,31 @@ async function handleReportClick(e) {
             localStorage.setItem('reportedPosts', JSON.stringify(currentReported));
         }
         
-        // --- THIS IS THE KEY FIX ---
-        // Manually set the button's final state. This ensures that even if the listener
-        // hasn't re-run yet, the user who clicked gets immediate, final feedback.
-        btn.textContent = 'Reported';
-        
     } catch (error) {
         console.error("Error reporting:", error);
         // On error, revert the button so the user can try again.
-        btn.disabled = false;
-        btn.textContent = 'Report';
+        // We need to find the button again in the DOM in case it was re-rendered.
+        const buttonAfterError = document.querySelector(`button.report-button[data-id="${postId}"]`);
+        if (buttonAfterError) {
+            buttonAfterError.disabled = false;
+            buttonAfterError.textContent = 'Report';
+        }
     } finally {
+        // --- THIS IS THE KEY FIX ---
+        // This 'finally' block runs after the 'try' or 'catch' is complete.
+        // We remove the post from the in-progress set, then we manually trigger
+        // the real-time listener to re-draw the UI with the final, correct state.
         reportingInProgress.delete(postId);
+
+        // By the time this code runs, the onSnapshot listener already has the updated
+        // database value. But we must manually tell it to update the UI one last time
+        // to reflect that reporting is no longer "in-progress". We do this by
+        // finding the button that's actually on the page and setting its final state.
+        const finalButton = document.querySelector(`button.report-button[data-id="${postId}"]`);
+        if (finalButton) {
+            finalButton.disabled = true;
+            finalButton.textContent = 'Reported';
+        }
     }
 }
 
