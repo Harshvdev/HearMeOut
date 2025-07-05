@@ -25,7 +25,6 @@ const db = getFirestore(app);
 const MAX_WORDS = 200;
 const MAX_CHARS = 1200;
 const POST_COOLDOWN_SECONDS = 300; // 5 minutes
-const reportingInProgress = new Set();
 // --- HTML Element References
 const postContent = document.getElementById('post-content');
 const shareButton = document.getElementById('share-button');
@@ -147,12 +146,7 @@ function listenForPosts() {
                 const contentP = document.createElement('p');
                 contentP.textContent = postData.content;
 
-                const isReportedByUser = reportedPosts.includes(postId);
-
-                if (reportingInProgress.has(postId)) {
-                    reportButton.disabled = true;
-                    reportButton.textContent = 'Reporting...';
-                } else if (isReportedByUser) {
+                if (reportedPosts.includes(postId)) {
                     reportButton.disabled = true;
                     reportButton.textContent = 'Reported';
                 } else {
@@ -171,8 +165,8 @@ function listenForPosts() {
     });
 }
 
-// [UPDATED] This function now correctly updates the button's final state.
-async function handleReportClick(e) {
+// [UPDATED] This function now uses an "Optimistic UI Update" for instant feedback.
+function handleReportClick(e) {
     if (!e.target.classList.contains('report-button')) return;
 
     const btn = e.target;
@@ -180,55 +174,34 @@ async function handleReportClick(e) {
     
     if (btn.disabled) return;
     
-    // Check localStorage one last time for safety.
-    const reportedInStorage = JSON.parse(localStorage.getItem('reportedPosts')) || [];
-    if (reportedInStorage.includes(postId)) {
-        btn.disabled = true;
-        btn.textContent = 'Reported';
-        return;
-    }
-    
-    if (reportingInProgress.has(postId)) return;
-    
-    reportingInProgress.add(postId);
+    // --- OPTIMISTIC UPDATE ---
+    // 1. Immediately update the UI to the final state.
     btn.disabled = true;
-    btn.textContent = 'Reporting...';
+    btn.textContent = 'Reported';
 
-    try {
-        await updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) });
-        
-        const currentReported = JSON.parse(localStorage.getItem('reportedPosts')) || [];
-        if (!currentReported.includes(postId)) {
-            currentReported.push(postId);
-            localStorage.setItem('reportedPosts', JSON.stringify(currentReported));
-        }
-        
-    } catch (error) {
-        console.error("Error reporting:", error);
-        // On error, revert the button so the user can try again.
-        // We need to find the button again in the DOM in case it was re-rendered.
-        const buttonAfterError = document.querySelector(`button.report-button[data-id="${postId}"]`);
-        if (buttonAfterError) {
-            buttonAfterError.disabled = false;
-            buttonAfterError.textContent = 'Report';
-        }
-    } finally {
-        // --- THIS IS THE KEY FIX ---
-        // This 'finally' block runs after the 'try' or 'catch' is complete.
-        // We remove the post from the in-progress set, then we manually trigger
-        // the real-time listener to re-draw the UI with the final, correct state.
-        reportingInProgress.delete(postId);
-
-        // By the time this code runs, the onSnapshot listener already has the updated
-        // database value. But we must manually tell it to update the UI one last time
-        // to reflect that reporting is no longer "in-progress". We do this by
-        // finding the button that's actually on the page and setting its final state.
-        const finalButton = document.querySelector(`button.report-button[data-id="${postId}"]`);
-        if (finalButton) {
-            finalButton.disabled = true;
-            finalButton.textContent = 'Reported';
-        }
+    // 2. Immediately update localStorage.
+    const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+    if (!reportedPosts.includes(postId)) {
+        reportedPosts.push(postId);
+        localStorage.setItem('reportedPosts', JSON.stringify(reportedPosts));
     }
+
+    // 3. Perform the database operation silently in the background.
+    updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) })
+        .catch(error => {
+            // --- ROLLBACK ON ERROR ---
+            // If the database update fails, revert the changes.
+            console.error("Error reporting post: ", error);
+            btn.disabled = false;
+            btn.textContent = 'Report';
+
+            // Remove the post from the local list since the report failed.
+            const updatedReportedPosts = reportedPosts.filter(id => id !== postId);
+            localStorage.setItem('reportedPosts', JSON.stringify(updatedReportedPosts));
+
+            // Optionally, show an error message to the user.
+            showFeedback('Could not report post. Please try again.', 'error');
+        });
 }
 
 // =====================================================================
