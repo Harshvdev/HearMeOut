@@ -24,7 +24,7 @@ const db = getFirestore(app);
 // =====================================================================
 const MAX_WORDS = 200;
 const MAX_CHARS = 1200;
-const POST_COOLDOWN_SECONDS = 300; // MODIFIED: Cooldown increased to 5 minutes
+const POST_COOLDOWN_SECONDS = 300; // 5 minutes
 const reportingInProgress = new Set();
 // --- HTML Element References
 const postContent = document.getElementById('post-content');
@@ -112,7 +112,6 @@ async function handlePostSubmission(event) {
         console.error("Error adding document: ", error);
         showFeedback("Error sharing post. Your text is restored.", 'error');
         postContent.value = contentToSubmit;
-        // MODIFIED: Update character count when text is restored on error
         charCounter.textContent = `${contentToSubmit.length} / ${MAX_CHARS}`;
     } finally {
         shareButton.disabled = false;
@@ -124,17 +123,45 @@ function listenForPosts() {
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
     onSnapshot(q, (snapshot) => {
         const feed = document.getElementById('post-feed');
-        if (snapshot.empty) { feed.innerHTML = `<p class="feed-status">No thoughts shared yet. Be the first!</p>`; return; }
+        if (snapshot.empty) {
+            feed.innerHTML = `<p class="feed-status">No thoughts shared yet. Be the first!</p>`;
+            return;
+        }
+
         feed.innerHTML = '';
         const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+
         snapshot.forEach((doc) => {
             const postData = doc.data();
             const postId = doc.id;
-            if (postData.reportCount < 3 && !reportedPosts.includes(postId)) {
+
+            if (postData.reportCount < 3) {
                 const card = document.createElement('div');
                 card.className = 'post-card';
-                card.innerHTML = `<button class="report-button" data-id="${postId}" aria-label="Report post">Report</button><p></p>`;
-                card.querySelector('p').textContent = postData.content;
+
+                const reportButton = document.createElement('button');
+                reportButton.className = 'report-button';
+                reportButton.dataset.id = postId;
+                reportButton.setAttribute('aria-label', 'Report post');
+                
+                const contentP = document.createElement('p');
+                contentP.textContent = postData.content;
+
+                const isReportedByUser = reportedPosts.includes(postId);
+
+                if (reportingInProgress.has(postId)) {
+                    reportButton.disabled = true;
+                    reportButton.textContent = 'Reporting...';
+                } else if (isReportedByUser) {
+                    reportButton.disabled = true;
+                    reportButton.textContent = 'Reported';
+                } else {
+                    reportButton.disabled = false;
+                    reportButton.textContent = 'Report';
+                }
+                
+                card.appendChild(reportButton);
+                card.appendChild(contentP);
                 feed.appendChild(card);
             }
         });
@@ -143,21 +170,48 @@ function listenForPosts() {
         document.getElementById('post-feed').innerHTML = `<p class="feed-status">Could not fetch posts.</p>`;
     });
 }
+
+// [UPDATED] This function now manually sets the FINAL button text to 'Reported' on success.
 async function handleReportClick(e) {
     if (!e.target.classList.contains('report-button')) return;
+
     const btn = e.target;
     const postId = btn.dataset.id;
+    
+    if (btn.disabled) return;
+    
+    const reportedInStorage = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+    if (reportedInStorage.includes(postId)) {
+        btn.disabled = true;
+        btn.textContent = 'Reported';
+        return;
+    }
+    
     if (reportingInProgress.has(postId)) return;
+    
     reportingInProgress.add(postId);
-    btn.disabled = true; btn.textContent = 'Reported';
+    btn.disabled = true;
+    btn.textContent = 'Reporting...';
+
     try {
         await updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) });
-        const reported = JSON.parse(localStorage.getItem('reportedPosts')) || [];
-        if (!reported.includes(postId)) { reported.push(postId); localStorage.setItem('reportedPosts', JSON.stringify(reported)); }
-        btn.closest('.post-card').classList.add('hidden');
+        
+        const currentReported = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+        if (!currentReported.includes(postId)) {
+            currentReported.push(postId);
+            localStorage.setItem('reportedPosts', JSON.stringify(currentReported));
+        }
+        
+        // --- THIS IS THE KEY FIX ---
+        // Manually set the button's final state. This ensures that even if the listener
+        // hasn't re-run yet, the user who clicked gets immediate, final feedback.
+        btn.textContent = 'Reported';
+        
     } catch (error) {
         console.error("Error reporting:", error);
-        btn.disabled = false; btn.textContent = 'Report';
+        // On error, revert the button so the user can try again.
+        btn.disabled = false;
+        btn.textContent = 'Report';
     } finally {
         reportingInProgress.delete(postId);
     }
@@ -178,18 +232,15 @@ document.addEventListener('DOMContentLoaded', () => {
     feedbackModalOverlay.addEventListener('click', (e) => { if (e.target === feedbackModalOverlay) closeModal(); });
     feedbackForm.addEventListener('submit', handleFeedbackSubmission);
     
-    // MODIFIED: Add input event listener for the character counter
     postContent.addEventListener('input', () => {
         const currentLength = postContent.value.length;
         charCounter.textContent = `${currentLength} / ${MAX_CHARS}`;
     });
     
-    // Keydown listener for classic text composition
     postContent.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             if (!shareButton.disabled) {
-                // Manually trigger the form submission to run all logic
                 document.getElementById('post-form').requestSubmit();
             }
         }
