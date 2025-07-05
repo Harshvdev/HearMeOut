@@ -37,7 +37,7 @@
    ================================= */
 body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; transition: background-color 0.2s ease, color 0.2s ease; }
 main { max-width: 800px; margin: 20px auto 40px; padding: 0 20px; }
-header { padding: 0 20px; margin-bottom: 40px; }
+header { padding: 10px 20px; margin-bottom: 20px; }
 .header-content { max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
 header h1 { color: var(--text-color); font-weight: 300; font-size: 2.5em; letter-spacing: 1px; margin: 20px 0; }
 header a { color: var(--text-secondary-color); text-decoration: none; font-size: 14px; font-weight: 600; }
@@ -53,7 +53,7 @@ header a:hover { text-decoration: underline; }
 /* =================================
    4. SUBMISSION FORM
    ================================= */
-.submission-area { background-color: var(--card-bg-color); padding: 25px; border-radius: 8px; box-shadow: var(--box-shadow); margin-bottom: 50px; }
+.submission-area { background-color: var(--card-bg-color); padding: 25px; border-radius: 8px; box-shadow: var(--box-shadow); margin-bottom: 40px; }
 #post-content { width: 100%; padding: 15px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); border-radius: 8px; font-size: 17px; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; margin-bottom: 10px; }
 #post-content:focus { outline: none; border-color: var(--primary-button-bg); box-shadow: 0 0 0 2px var(--focus-shadow-color); }
 .form-footer { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-secondary-color); padding: 0 5px; margin-bottom: 15px; }
@@ -67,28 +67,12 @@ header a:hover { text-decoration: underline; }
 /* =================================
    5. POST FEED
    ================================= */
-.post-card {
-    background-color: var(--card-bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 25px; /* MODIFIED: Increased spacing */
-    box-shadow: var(--box-shadow-light);
-    overflow: hidden;
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-}
+.post-card { background-color: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: var(--box-shadow-light); overflow: hidden; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
 .post-card.hidden { opacity: 0; height: 0; padding: 0; margin: 0; border: none; }
-.post-card p {
-    margin: 0;
-    color: var(--text-color);
-    overflow-wrap: break-word;
-    font-size: 1.1em; /* MODIFIED: Larger font for posts */
-    line-height: 1.7; /* MODIFIED: More spacious lines */
-    white-space: pre-wrap; /* This makes \n (new lines) render correctly */
-}
-.report-button { float: right; margin-left: 15px; margin-bottom: 5px; background-color: var(--secondary-button-bg); border: 1px solid transparent; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary-color); cursor: pointer; }
+.post-card p { margin: 0; color: var(--text-color); overflow-wrap: break-word; font-size: 1.1em; line-height: 1.7; white-space: pre-wrap; }
+.report-button { float: right; margin-left: 15px; margin-bottom: 5px; background-color: var(--secondary-button-bg); border: 1px solid transparent; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary-color); cursor: pointer; transition: background-color 0.2s ease, opacity 0.2s ease; }
 .report-button:hover { background-color: var(--secondary-button-hover-bg); }
-.report-button:disabled { opacity: 0.7; cursor: default; }
+.report-button:disabled { opacity: 0.7; cursor: default; background-color: var(--secondary-button-bg); }
 .feed-status { text-align: center; color: var(--text-secondary-color); font-size: 1.1em; padding: 40px 20px; }
 
 /* =================================
@@ -103,3 +87,27 @@ header a:hover { text-decoration: underline; }
 #feedback-form textarea { width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 15px; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; }
 #feedback-form button { width: 100%; padding: 10px; border: none; border-radius: 8px; background-color: var(--primary-button-bg); color: var(--primary-button-text); font-weight: bold; cursor: pointer; }
 #feedback-form-status { margin-top: 10px; text-align: center; font-size: 14px; color: var(--primary-button-bg); }
+
+/* =================================
+   7. RESPONSIVENESS (NEW)
+   ================================= */
+@media (max-width: 600px) {
+    main { padding: 0 15px; }
+    header { margin-bottom: 20px; }
+    .header-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+    }
+    header h1 {
+        font-size: 2em;
+        margin: 10px 0 0 0;
+    }
+    #theme-toggle-button {
+        top: 10px;
+        right: 10px;
+    }
+    .submission-area, .post-card { padding: 20px; }
+    .post-card p { font-size: 1em; }
+}
