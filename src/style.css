@@ -1,181 +1,105 @@
-/* General Body & Font Styles */
-body {
-    background-color: #F0F2F5;
-    color: #1c1e21;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
+/* =================================
+   1. THEME & COLOR VARIABLES
+   ================================= */
+:root {
+    --bg-color: #F0F2F5;
+    --card-bg-color: #ffffff;
+    --text-color: #1c1e21;
+    --text-secondary-color: #606770;
+    --border-color: #dddfe2;
+    --primary-button-bg: #0866FF;
+    --primary-button-text: #ffffff;
+    --primary-button-hover-bg: #0655d4;
+    --secondary-button-bg: #E4E6EB;
+    --secondary-button-hover-bg: #d8dbdf;
+    --focus-shadow-color: #E7F3FF;
+    --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --box-shadow-light: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Main Layout Container */
-main {
-    max-width: 800px;
-    margin: 40px auto;
-    padding: 0 20px;
+[data-theme="dark"] {
+    --bg-color: #18191A;
+    --card-bg-color: #242526;
+    --text-color: #E4E6EB;
+    --text-secondary-color: #B0B3B8;
+    --border-color: #3A3B3C;
+    --primary-button-bg: #2374E1;
+    --primary-button-hover-bg: #3982E4;
+    --secondary-button-bg: #3A3B3C;
+    --secondary-button-hover-bg: #4E4F50;
+    --focus-shadow-color: rgba(45, 136, 255, 0.3);
+    --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --box-shadow-light: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-/* Header */
-header h1 {
-    text-align: center;
-    color: #1c1e21;
-    font-weight: 300;
-    font-size: 2.8em;
-    letter-spacing: 1px;
-    margin-bottom: 40px;
-}
+/* =================================
+   2. GENERAL & LAYOUT
+   ================================= */
+body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; transition: background-color 0.2s ease, color 0.2s ease; }
+main { max-width: 800px; margin: 20px auto 40px; padding: 0 20px; }
+header { padding: 0 20px; margin-bottom: 40px; }
+.header-content { max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+header h1 { color: var(--text-color); font-weight: 300; font-size: 2.5em; letter-spacing: 1px; margin: 20px 0; }
+header a { color: var(--text-secondary-color); text-decoration: none; font-size: 14px; font-weight: 600; }
+header a:hover { text-decoration: underline; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 
-/* Submission Form Area */
-.submission-area {
-    background-color: #ffffff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 50px;
-}
+/* =================================
+   3. THEME TOGGLE BUTTON
+   ================================= */
+#theme-toggle-button { position: fixed; top: 15px; right: 20px; background-color: var(--card-bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, transform 0.2s ease; }
+#theme-toggle-button:hover { transform: scale(1.1); }
 
-/* Visually hidden class for accessibility */
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-}
+/* =================================
+   4. SUBMISSION FORM
+   ================================= */
+.submission-area { background-color: var(--card-bg-color); padding: 25px; border-radius: 8px; box-shadow: var(--box-shadow); margin-bottom: 50px; }
+#post-content { width: 100%; padding: 15px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); border-radius: 8px; font-size: 17px; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; margin-bottom: 10px; }
+#post-content:focus { outline: none; border-color: var(--primary-button-bg); box-shadow: 0 0 0 2px var(--focus-shadow-color); }
+.form-footer { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-secondary-color); padding: 0 5px; margin-bottom: 15px; }
+#feedback-message { font-weight: 600; }
+#feedback-message.error { color: #d93025; }
+#feedback-message.success { color: #1e8e3e; }
+#share-button { width: 100%; padding: 12px 20px; background-color: var(--primary-button-bg); color: var(--primary-button-text); border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease-in-out; }
+#share-button:hover { background-color: var(--primary-button-hover-bg); }
+#share-button:disabled { background-color: var(--secondary-button-bg); color: var(--text-secondary-color); cursor: not-allowed; }
 
-#post-content {
-    width: 100%;
-    padding: 15px;
-    border: 1px solid #dddfe2;
-    border-radius: 8px;
-    font-size: 17px;
-    line-height: 1.5;
-    resize: vertical;
-    box-sizing: border-box; /* Important for width: 100% */
-    font-family: inherit;
-    margin-bottom: 10px;
-}
-
-#post-content:focus {
-    outline: none;
-    border-color: #0866FF;
-    box-shadow: 0 0 0 2px #E7F3FF; /* Soft blue glow on focus */
-}
-
-/* NEW: Footer for the form (counter and messages) */
-.form-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    color: #606770;
-    padding: 0 5px;
-    margin-bottom: 15px;
-}
-
-#feedback-message {
-    font-weight: 600;
-}
-
-#feedback-message.error {
-    color: #d93025; /* Red for errors */
-}
-
-#feedback-message.success {
-    color: #1e8e3e; /* Green for success */
-}
-
-#char-counter.limit-near {
-    color: #f29900; /* Amber when nearing limit */
-    font-weight: 600;
-}
-#char-counter.limit-exceeded {
-    color: #d93025; /* Red when over limit */
-    font-weight: 600;
-}
-
-#share-button {
-    width: 100%;
-    padding: 12px 20px;
-    background-color: #0866FF;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
-}
-
-#share-button:hover {
-    background-color: #0655d4; /* A slightly darker blue for hover */
-}
-
-#share-button:disabled {
-    background-color: #e4e6eb;
-    color: #bcc0c4;
-    cursor: not-allowed;
-}
-
-
-/* Post Feed Section */
+/* =================================
+   5. POST FEED
+   ================================= */
 .post-card {
-    background-color: #ffffff;
-    border: 1px solid #dddfe2;
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    overflow: hidden; /* Contains the floated button */
-    transition: opacity 0.3s ease-in-out; /* For smooth hiding */
+    padding: 25px;
+    margin-bottom: 25px; /* MODIFIED: Increased spacing */
+    box-shadow: var(--box-shadow-light);
+    overflow: hidden;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
-
-.post-card.hidden {
-    opacity: 0;
-    height: 0;
-    padding: 0;
-    margin: 0;
-    border: none;
-}
-
+.post-card.hidden { opacity: 0; height: 0; padding: 0; margin: 0; border: none; }
 .post-card p {
     margin: 0;
-    color: #1c1e21;
-    overflow-wrap: break-word; /* Prevents long text from overflowing */
+    color: var(--text-color);
+    overflow-wrap: break-word;
+    font-size: 1.1em; /* MODIFIED: Larger font for posts */
+    line-height: 1.7; /* MODIFIED: More spacious lines */
+    white-space: pre-wrap; /* This makes \n (new lines) render correctly */
 }
+.report-button { float: right; margin-left: 15px; margin-bottom: 5px; background-color: var(--secondary-button-bg); border: 1px solid transparent; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary-color); cursor: pointer; }
+.report-button:hover { background-color: var(--secondary-button-hover-bg); }
+.report-button:disabled { opacity: 0.7; cursor: default; }
+.feed-status { text-align: center; color: var(--text-secondary-color); font-size: 1.1em; padding: 40px 20px; }
 
-.report-button {
-    float: right;
-    margin-left: 15px;
-    margin-bottom: 5px;
-    background-color: #F0F2F5;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #606770;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.report-button:hover {
-    background-color: #e4e6eb;
-    border-color: #ccd0d5;
-}
-
-.report-button:disabled {
-    background-color: #e4e6eb;
-    color: #bcc0c4;
-    cursor: default;
-}
-
-/* NEW: Styles for feed status messages (loading, empty) */
-.feed-status {
-    text-align: center;
-    color: #606770;
-    font-size: 1.1em;
-    padding: 40px 20px;
-}
+/* =================================
+   6. FEEDBACK MODAL
+   ================================= */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal-content { background-color: var(--card-bg-color); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; transform: scale(0.95); transition: transform 0.3s ease; }
+.modal-overlay.open .modal-content { transform: scale(1); }
+.modal-close { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 28px; color: var(--text-secondary-color); cursor: pointer; }
+#feedback-form .feedback-type { display: flex; gap: 20px; margin-bottom: 15px; }
+#feedback-form textarea { width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 15px; background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; }
+#feedback-form button { width: 100%; padding: 10px; border: none; border-radius: 8px; background-color: var(--primary-button-bg); color: var(--primary-button-text); font-weight: bold; cursor: pointer; }
+#feedback-form-status { margin-top: 10px; text-align: center; font-size: 14px; color: var(--primary-button-bg); }

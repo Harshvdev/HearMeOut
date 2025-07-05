@@ -1,5 +1,5 @@
 // =====================================================================
-// 1. IMPORTS
+// 1. IMPORTS & FIREBASE SETUP
 // =====================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
@@ -7,9 +7,6 @@ import {
     query, orderBy, onSnapshot, doc, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// =====================================================================
-// 2. FIREBASE SETUP
-// =====================================================================
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
   authDomain: import.meta.env.VITE_AUTH_DOMAIN,
@@ -23,198 +20,169 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // =====================================================================
-// 3. CONSTANTS & STATE
+// 2. CONSTANTS & STATE
 // =====================================================================
 const MAX_WORDS = 200;
 const MAX_CHARS = 1200;
-const POST_COOLDOWN_SECONDS = 60;
-
+const POST_COOLDOWN_SECONDS = 300; // MODIFIED: Cooldown increased to 5 minutes
+const reportingInProgress = new Set();
 // --- HTML Element References
-const postForm = document.getElementById('post-form');
 const postContent = document.getElementById('post-content');
 const shareButton = document.getElementById('share-button');
 const postFeed = document.getElementById('post-feed');
 const charCounter = document.getElementById('char-counter');
 const feedbackMessage = document.getElementById('feedback-message');
-
-// --- In-Memory State
-const reportingInProgress = new Set();
+const themeToggleButton = document.getElementById('theme-toggle-button');
+const feedbackModalOverlay = document.getElementById('feedback-modal-overlay');
+const openFeedbackLink = document.getElementById('open-feedback-modal');
+const closeModalButton = document.getElementById('close-modal-button');
+const feedbackForm = document.getElementById('feedback-form');
+const feedbackFormStatus = document.getElementById('feedback-form-status');
 
 // =====================================================================
-// 4. FUNCTION DEFINITIONS (All functions from previous step are unchanged)
+// 3. THEME MANAGEMENT & MODAL
 // =====================================================================
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    themeToggleButton.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme) applyTheme(savedTheme);
+    else if (systemPrefersDark) applyTheme('dark');
+    else applyTheme('light');
+}
+function openModal() { feedbackModalOverlay.classList.add('open'); }
+function closeModal() { feedbackModalOverlay.classList.remove('open'); }
+async function handleFeedbackSubmission(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+    const formData = new FormData(e.target);
+    try {
+        await addDoc(collection(db, 'feedback'), { type: formData.get('feedbackType'), message: formData.get('feedbackText'), timestamp: serverTimestamp(), userAgent: navigator.userAgent });
+        feedbackFormStatus.textContent = "Thank you! Your feedback has been sent.";
+        e.target.reset();
+        setTimeout(() => { closeModal(); feedbackFormStatus.textContent = ""; }, 2000);
+    } catch (error) {
+        console.error("Error submitting feedback: ", error);
+        feedbackFormStatus.textContent = "Error. Please try again.";
+    } finally {
+        btn.disabled = false; btn.textContent = 'Submit';
+    }
+}
 
-function showFeedback(message, type = 'error', duration = 3000) {
+// =====================================================================
+// 4. CORE APPLICATION LOGIC
+// =====================================================================
+function showFeedback(message, type = 'error', duration = 4000) {
     feedbackMessage.textContent = message;
     feedbackMessage.className = `feedback-message ${type}`;
-    setTimeout(() => {
-        feedbackMessage.textContent = '';
-        feedbackMessage.className = 'feedback-message';
-    }, duration);
-}
-
-function updateCharCounter() {
-    const count = postContent.value.length;
-    charCounter.textContent = `${count} / ${MAX_CHARS}`;
-    charCounter.classList.toggle('limit-near', count > MAX_CHARS * 0.9);
-    charCounter.classList.toggle('limit-exceeded', count > MAX_CHARS);
-}
-
-function setFeedStatus(message) {
-    postFeed.innerHTML = `<p class="feed-status">${message}</p>`;
-}
-
-function getReportedPostsFromStorage() {
-    const reported = localStorage.getItem('reportedPosts');
-    return reported ? JSON.parse(reported) : [];
-}
-
-function addPostToReportedStorage(postId) {
-    const reportedPosts = getReportedPostsFromStorage();
-    if (!reportedPosts.includes(postId)) {
-        reportedPosts.push(postId);
-        localStorage.setItem('reportedPosts', JSON.stringify(reportedPosts));
+    if (duration > 0) {
+      setTimeout(() => { feedbackMessage.textContent = ''; feedbackMessage.className = 'feedback-message'; }, duration);
     }
 }
 
 async function handlePostSubmission(event) {
     event.preventDefault();
     const lastPostTime = localStorage.getItem('lastPostTimestamp');
-    if (lastPostTime) {
-        const secondsSinceLastPost = (Date.now() - parseInt(lastPostTime)) / 1000;
-        if (secondsSinceLastPost < POST_COOLDOWN_SECONDS) {
-            const secondsRemaining = Math.ceil(POST_COOLDOWN_SECONDS - secondsSinceLastPost);
-            showFeedback(`Please wait ${secondsRemaining}s to post again.`, 'error');
-            return;
-        }
-    }
-    const content = postContent.value.trim();
-    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
-    if (content === '') {
-        showFeedback("You can't share an empty thought!", 'error');
+    if (lastPostTime && (Date.now() - parseInt(lastPostTime)) / 1000 < POST_COOLDOWN_SECONDS) {
+        const secondsRemaining = Math.ceil(POST_COOLDOWN_SECONDS - (Date.now() - parseInt(lastPostTime)) / 1000);
+        showFeedback(`Please wait ${secondsRemaining}s to post again.`, 'error');
         return;
     }
-    if (wordCount > MAX_WORDS) {
-        showFeedback(`Post exceeds the ${MAX_WORDS}-word limit.`, 'error');
-        return;
-    }
+    const contentToSubmit = postContent.value.trim();
+    const wordCount = contentToSubmit.split(/\s+/).filter(Boolean).length;
+    if (contentToSubmit === '') { showFeedback("You can't share an empty thought!", 'error'); return; }
+    if (wordCount > MAX_WORDS) { showFeedback(`Post exceeds the ${MAX_WORDS}-word limit.`, 'error'); return; }
+
+    postContent.value = '';
+    document.getElementById('char-counter').textContent = `0 / ${MAX_CHARS}`;
     shareButton.disabled = true;
     shareButton.textContent = "Sharing...";
+    showFeedback("Sharing your thought...", 'success', 0);
+
     try {
-        await addDoc(collection(db, 'posts'), {
-            content: content,
-            timestamp: serverTimestamp(),
-            reportCount: 0
-        });
-        postContent.value = '';
-        updateCharCounter();
-        showFeedback('Your post was shared!', 'success');
+        await addDoc(collection(db, 'posts'), { content: contentToSubmit, timestamp: serverTimestamp(), reportCount: 0 });
         localStorage.setItem('lastPostTimestamp', Date.now().toString());
+        showFeedback('Your post was shared!', 'success');
     } catch (error) {
         console.error("Error adding document: ", error);
-        showFeedback("Error sharing your post. Try again.", 'error');
+        showFeedback("Error sharing post. Your text is restored.", 'error');
+        postContent.value = contentToSubmit;
     } finally {
         shareButton.disabled = false;
         shareButton.textContent = "Share Anonymously";
     }
 }
 
-async function handleReportClick(event) {
-    const button = event.target;
-    if (!button.classList.contains('report-button') || button.disabled) return;
-    const postId = button.dataset.id;
-    const postCard = button.closest('.post-card');
+function listenForPosts() {
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
+    onSnapshot(q, (snapshot) => {
+        const feed = document.getElementById('post-feed');
+        if (snapshot.empty) { feed.innerHTML = `<p class="feed-status">No thoughts shared yet. Be the first!</p>`; return; }
+        feed.innerHTML = '';
+        const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+        snapshot.forEach((doc) => {
+            const postData = doc.data();
+            const postId = doc.id;
+            if (postData.reportCount < 3 && !reportedPosts.includes(postId)) {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.innerHTML = `<button class="report-button" data-id="${postId}" aria-label="Report post">Report</button><p></p>`;
+                card.querySelector('p').textContent = postData.content;
+                feed.appendChild(card);
+            }
+        });
+    }, (error) => {
+        console.error("Error listening: ", error);
+        document.getElementById('post-feed').innerHTML = `<p class="feed-status">Could not fetch posts.</p>`;
+    });
+}
+async function handleReportClick(e) {
+    if (!e.target.classList.contains('report-button')) return;
+    const btn = e.target;
+    const postId = btn.dataset.id;
     if (reportingInProgress.has(postId)) return;
     reportingInProgress.add(postId);
-    button.disabled = true;
-    button.textContent = "Reported";
+    btn.disabled = true; btn.textContent = 'Reported';
     try {
-        const postRef = doc(db, 'posts', postId);
-        await updateDoc(postRef, { reportCount: increment(1) });
-        addPostToReportedStorage(postId);
-        postCard.classList.add('hidden');
-        setTimeout(() => postCard.remove(), 300);
+        await updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) });
+        const reported = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+        if (!reported.includes(postId)) { reported.push(postId); localStorage.setItem('reportedPosts', JSON.stringify(reported)); }
+        btn.closest('.post-card').classList.add('hidden');
     } catch (error) {
-        console.error("Error reporting post: ", error);
-        button.disabled = false;
-        button.textContent = "Report";
-        showFeedback("Failed to report post. Please try again.", 'error');
+        console.error("Error reporting:", error);
+        btn.disabled = false; btn.textContent = 'Report';
     } finally {
         reportingInProgress.delete(postId);
     }
 }
 
-function createPostCard(postData, postId) {
-    const reportedPostsLocally = getReportedPostsFromStorage();
-    if (reportedPostsLocally.includes(postId) || postData.reportCount >= 3) {
-        return null;
-    }
-    const card = document.createElement('div');
-    card.classList.add('post-card');
-    card.dataset.postId = postId;
-    const reportButton = document.createElement('button');
-    reportButton.classList.add('report-button');
-    reportButton.textContent = 'Report';
-    reportButton.dataset.id = postId;
-    reportButton.setAttribute('aria-label', `Report post starting with: ${postData.content.substring(0, 20)}`);
-    if (reportingInProgress.has(postId)) {
-        reportButton.disabled = true;
-        reportButton.textContent = "Reported";
-    }
-    const contentP = document.createElement('p');
-    contentP.textContent = postData.content;
-    card.appendChild(reportButton);
-    card.appendChild(contentP);
-    return card;
-}
-
-function listenForPosts() {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) {
-            setFeedStatus("No thoughts shared yet. Be the first!");
-            return;
-        }
-        postFeed.innerHTML = '';
-        snapshot.forEach((doc) => {
-            const postCardElement = createPostCard(doc.data(), doc.id);
-            if (postCardElement) {
-                postFeed.appendChild(postCardElement);
-            }
-        });
-    }, (error) => {
-        console.error("Error listening to post updates: ", error);
-        setFeedStatus("Could not fetch posts. Please check your connection and try again later.");
-    });
-}
-
 // =====================================================================
-// 5. SCRIPT EXECUTION
+// 5. INITIALIZATION & EVENT LISTENERS
 // =====================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    setFeedStatus("Loading thoughts...");
+    initializeTheme();
     listenForPosts();
-
-    postForm.addEventListener('submit', handlePostSubmission);
-    postContent.addEventListener('input', updateCharCounter);
+    
+    document.getElementById('post-form').addEventListener('submit', handlePostSubmission);
     postFeed.addEventListener('click', handleReportClick);
-
-    // --- REPLACED: Keydown listener with new chat-style logic ---
-    postContent.addEventListener('keydown', (event) => {
-        // If the user presses Shift + Enter, allow the default behavior (new line)
-        if (event.key === 'Enter' && event.shiftKey) {
-            return; // Do nothing, let the browser add a new line.
-        }
-
-        // If the user presses only Enter...
-        if (event.key === 'Enter') {
-            // ...prevent the default behavior (which is to add a new line).
-            event.preventDefault();
-
-            // If the share button is not already disabled (e.g., from a cooldown),
-            // programmatically click it to submit the post.
+    themeToggleButton.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'));
+    openFeedbackLink.addEventListener('click', (e) => { e.preventDefault(); openModal(); });
+    closeModalButton.addEventListener('click', closeModal);
+    feedbackModalOverlay.addEventListener('click', (e) => { if (e.target === feedbackModalOverlay) closeModal(); });
+    feedbackForm.addEventListener('submit', handleFeedbackSubmission);
+    
+    // REVERTED: Keydown listener for classic text composition
+    postContent.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
             if (!shareButton.disabled) {
-                shareButton.click();
+                // Manually trigger the form submission to run all logic
+                document.getElementById('post-form').requestSubmit();
             }
         }
     });

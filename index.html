@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,18 +8,22 @@
 </head>
 <body>
 
+  <button id="theme-toggle-button" aria-label="Toggle dark mode">🌙</button>
+
   <header>
-    <h1>HearMeOuttt</h1>
+    <div class="header-content">
+      <h1>HearMeOuttt</h1>
+      <a href="#" id="open-feedback-modal">Feedback & Bugs</a>
+    </div>
   </header>
 
   <main>
-    <!-- Section for submitting a new post -->
     <section class="submission-area">
       <form id="post-form">
         <label for="post-content" class="visually-hidden">Anonymous Post Content</label>
-        <!-- MODIFIED: Updated placeholder text for better UX -->
+        <!-- MODIFIED: Placeholder text updated for new shortcut -->
         <textarea id="post-content" name="post-content" rows="6" maxlength="1200"
-          placeholder="Share your thoughts... (Enter to send, Shift+Enter for new line)"></textarea>
+          placeholder="Compose your thoughts... (Ctrl+Enter to send)"></textarea>
         
         <div class="form-footer">
           <span id="feedback-message"></span>
@@ -30,7 +34,6 @@
       </form>
     </section>
 
-    <!-- Section for displaying the feed of posts -->
     <section class="feed-area">
       <div id="post-feed">
         <!-- Posts will be rendered here by JavaScript -->
@@ -38,7 +41,23 @@
     </section>
   </main>
 
-  <script type="module" src="src/script.js"></script>
+  <div id="feedback-modal-overlay" class="modal-overlay">
+    <div id="feedback-modal" class="modal-content">
+      <button id="close-modal-button" class="modal-close" aria-label="Close dialog">×</button>
+      <h2>Submit Feedback</h2>
+      <p>Found a bug or have an idea for a new feature? Let me know!</p>
+      <form id="feedback-form">
+        <div class="feedback-type">
+          <label><input type="radio" name="feedbackType" value="bug" checked> Bug Report</label>
+          <label><input type="radio" name="feedbackType" value="feature"> Feature Suggestion</label>
+        </div>
+        <textarea id="feedback-text" name="feedbackText" rows="5" placeholder="Please be as detailed as possible..." required></textarea>
+        <button type="submit" id="submit-feedback-button">Submit</button>
+        <div id="feedback-form-status"></div>
+      </form>
+    </div>
+  </div>
 
+  <script type="module" src="src/script.js"></script>
 </body>
 </html>
