@@ -99,7 +99,7 @@ async function handlePostSubmission(event) {
     if (wordCount > MAX_WORDS) { showFeedback(`Post exceeds the ${MAX_WORDS}-word limit.`, 'error'); return; }
 
     postContent.value = '';
-    document.getElementById('char-counter').textContent = `0 / ${MAX_CHARS}`;
+    charCounter.textContent = `0 / ${MAX_CHARS}`;
     shareButton.disabled = true;
     shareButton.textContent = "Sharing...";
     showFeedback("Sharing your thought...", 'success', 0);
@@ -112,6 +112,8 @@ async function handlePostSubmission(event) {
         console.error("Error adding document: ", error);
         showFeedback("Error sharing post. Your text is restored.", 'error');
         postContent.value = contentToSubmit;
+        // MODIFIED: Update character count when text is restored on error
+        charCounter.textContent = `${contentToSubmit.length} / ${MAX_CHARS}`;
     } finally {
         shareButton.disabled = false;
         shareButton.textContent = "Share Anonymously";
@@ -176,7 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
     feedbackModalOverlay.addEventListener('click', (e) => { if (e.target === feedbackModalOverlay) closeModal(); });
     feedbackForm.addEventListener('submit', handleFeedbackSubmission);
     
-    // REVERTED: Keydown listener for classic text composition
+    // MODIFIED: Add input event listener for the character counter
+    postContent.addEventListener('input', () => {
+        const currentLength = postContent.value.length;
+        charCounter.textContent = `${currentLength} / ${MAX_CHARS}`;
+    });
+    
+    // Keydown listener for classic text composition
     postContent.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
