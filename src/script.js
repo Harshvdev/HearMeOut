@@ -55,13 +55,22 @@ function initializeTheme() {
 }
 function openModal() { feedbackModalOverlay.classList.add('open'); }
 function closeModal() { feedbackModalOverlay.classList.remove('open'); }
+
 async function handleFeedbackSubmission(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button');
     btn.disabled = true; btn.textContent = 'Submitting...';
     const formData = new FormData(e.target);
+    const feedbackType = formData.get('feedbackType');
+    
+    const collectionName = feedbackType === 'bug' ? 'bug-reports' : 'feature-suggestions';
+
     try {
-        await addDoc(collection(db, 'feedback'), { type: formData.get('feedbackType'), message: formData.get('feedbackText'), timestamp: serverTimestamp(), userAgent: navigator.userAgent });
+        await addDoc(collection(db, collectionName), { 
+            message: formData.get('feedbackText'), 
+            timestamp: serverTimestamp(), 
+            userAgent: navigator.userAgent 
+        });
         feedbackFormStatus.textContent = "Thank you! Your feedback has been sent.";
         e.target.reset();
         setTimeout(() => { closeModal(); feedbackFormStatus.textContent = ""; }, 2000);
@@ -76,6 +85,31 @@ async function handleFeedbackSubmission(e) {
 // =====================================================================
 // 4. CORE APPLICATION LOGIC
 // =====================================================================
+
+// [UPDATED] This function now formats the timestamp into an absolute date and time.
+function formatTimestamp(timestamp) {
+    if (!timestamp) return ''; // Return empty string if timestamp is null
+    
+    const postDate = timestamp.toDate();
+
+    const dateOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    };
+    
+    const timeOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    };
+
+    const formattedDate = postDate.toLocaleDateString('en-US', dateOptions);
+    const formattedTime = postDate.toLocaleTimeString('en-US', timeOptions);
+
+    return `${formattedDate} at ${formattedTime}`;
+}
+
 function showFeedback(message, type = 'error', duration = 4000) {
     feedbackMessage.textContent = message;
     feedbackMessage.className = `feedback-message ${type}`;
@@ -146,6 +180,10 @@ function listenForPosts() {
                 const contentP = document.createElement('p');
                 contentP.textContent = postData.content;
 
+                const timestampSpan = document.createElement('span');
+                timestampSpan.className = 'post-timestamp';
+                timestampSpan.textContent = formatTimestamp(postData.timestamp);
+
                 if (reportedPosts.includes(postId)) {
                     reportButton.disabled = true;
                     reportButton.textContent = 'Reported';
@@ -156,6 +194,7 @@ function listenForPosts() {
                 
                 card.appendChild(reportButton);
                 card.appendChild(contentP);
+                card.appendChild(timestampSpan);
                 feed.appendChild(card);
             }
         });
@@ -165,41 +204,25 @@ function listenForPosts() {
     });
 }
 
-// [UPDATED] This function now uses an "Optimistic UI Update" for instant feedback.
 function handleReportClick(e) {
     if (!e.target.classList.contains('report-button')) return;
-
     const btn = e.target;
     const postId = btn.dataset.id;
-    
     if (btn.disabled) return;
-    
-    // --- OPTIMISTIC UPDATE ---
-    // 1. Immediately update the UI to the final state.
     btn.disabled = true;
     btn.textContent = 'Reported';
-
-    // 2. Immediately update localStorage.
     const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
     if (!reportedPosts.includes(postId)) {
         reportedPosts.push(postId);
         localStorage.setItem('reportedPosts', JSON.stringify(reportedPosts));
     }
-
-    // 3. Perform the database operation silently in the background.
     updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) })
         .catch(error => {
-            // --- ROLLBACK ON ERROR ---
-            // If the database update fails, revert the changes.
             console.error("Error reporting post: ", error);
             btn.disabled = false;
             btn.textContent = 'Report';
-
-            // Remove the post from the local list since the report failed.
             const updatedReportedPosts = reportedPosts.filter(id => id !== postId);
             localStorage.setItem('reportedPosts', JSON.stringify(updatedReportedPosts));
-
-            // Optionally, show an error message to the user.
             showFeedback('Could not report post. Please try again.', 'error');
         });
 }
