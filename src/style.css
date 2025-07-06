@@ -74,6 +74,13 @@ header a:hover { text-decoration: underline; }
 .report-button:hover { background-color: var(--secondary-button-hover-bg); }
 .report-button:disabled { opacity: 0.7; cursor: default; background-color: var(--secondary-button-bg); }
 .feed-status { text-align: center; color: var(--text-secondary-color); font-size: 1.1em; padding: 40px 20px; }
+/* [NEW] Style for the post timestamp */
+.post-timestamp {
+    display: block;
+    margin-top: 15px;
+    font-size: 13px;
+    color: var(--text-secondary-color);
+}
 
 /* =================================
    6. FEEDBACK MODAL
@@ -89,7 +96,7 @@ header a:hover { text-decoration: underline; }
 #feedback-form-status { margin-top: 10px; text-align: center; font-size: 14px; color: var(--primary-button-bg); }
 
 /* =================================
-   7. RESPONSIVENESS (NEW)
+   7. RESPONSIVENESS
    ================================= */
 @media (max-width: 600px) {
     main { padding: 0 15px; }
