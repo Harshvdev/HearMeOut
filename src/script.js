@@ -4,16 +4,17 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
     getFirestore, collection, addDoc, serverTimestamp,
-    query, orderBy, onSnapshot, doc, updateDoc, increment
+    query, orderBy, getDocs, doc, updateDoc, increment,
+    limit, startAfter 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_API_KEY,
-  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_APP_ID
+    apiKey: import.meta.env.VITE_API_KEY,
+    authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -22,9 +23,31 @@ const db = getFirestore(app);
 // =====================================================================
 // 2. CONSTANTS & STATE
 // =====================================================================
+// --- Application Constants
 const MAX_WORDS = 200;
 const MAX_CHARS = 1200;
 const POST_COOLDOWN_SECONDS = 300; // 5 minutes
+const POSTS_PER_PAGE = 15; // Number of posts to fetch per batch for infinite scroll
+
+// --- "Magic String" Constants for Collections & Local Storage
+const COLLECTIONS = {
+    POSTS: 'posts',
+    BUG_REPORTS: 'bug-reports',
+    FEATURE_SUGGESTIONS: 'feature-suggestions'
+};
+const STORAGE_KEYS = {
+    THEME: 'theme',
+    LAST_POST_TIMESTAMP: 'lastPostTimestamp',
+    REPORTED_POSTS: 'reportedPosts',
+    ANONYMOUS_USER_ID: 'anonymousUserId'
+};
+
+// --- State Variables
+let lastVisiblePost = null; // Tracks the last post for pagination
+let isLoadingPosts = false; // Prevents multiple fetches at once
+let allPostsLoaded = false; // Becomes true when the end of the feed is reached
+let myPostsFilterActive = false; // Tracks if the "My Posts" filter is on
+
 // --- HTML Element References
 const postContent = document.getElementById('post-content');
 const shareButton = document.getElementById('share-button');
@@ -37,17 +60,33 @@ const openFeedbackLink = document.getElementById('open-feedback-modal');
 const closeModalButton = document.getElementById('close-modal-button');
 const feedbackForm = document.getElementById('feedback-form');
 const feedbackFormStatus = document.getElementById('feedback-form-status');
+const postCardTemplate = document.getElementById('post-card-template');
+const feedLoader = document.getElementById('feed-loader');
+const endOfFeedMessage = document.getElementById('end-of-feed');
+const toggleMyPostsButton = document.getElementById('toggle-my-posts-button');
+const noPostsFoundMessage = document.getElementById('no-posts-found');
 
 // =====================================================================
-// 3. THEME MANAGEMENT & MODAL
+// 3. ANONYMOUS IDENTITY, THEME, & MODAL MANAGEMENT
 // =====================================================================
+
+function getAnonymousUserId() {
+    let userId = localStorage.getItem(STORAGE_KEYS.ANONYMOUS_USER_ID);
+    if (!userId) {
+        userId = crypto.randomUUID();
+        localStorage.setItem(STORAGE_KEYS.ANONYMOUS_USER_ID, userId);
+    }
+    return userId;
+}
+const ANONYMOUS_USER_ID = getAnonymousUserId();
+
 function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
     themeToggleButton.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme');
+    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (savedTheme) applyTheme(savedTheme);
     else if (systemPrefersDark) applyTheme('dark');
@@ -63,7 +102,7 @@ async function handleFeedbackSubmission(e) {
     const formData = new FormData(e.target);
     const feedbackType = formData.get('feedbackType');
     
-    const collectionName = feedbackType === 'bug' ? 'bug-reports' : 'feature-suggestions';
+    const collectionName = feedbackType === 'bug' ? COLLECTIONS.BUG_REPORTS : COLLECTIONS.FEATURE_SUGGESTIONS;
 
     try {
         await addDoc(collection(db, collectionName), { 
@@ -86,28 +125,19 @@ async function handleFeedbackSubmission(e) {
 // 4. CORE APPLICATION LOGIC
 // =====================================================================
 
-// [UPDATED] This function now formats the timestamp into an absolute date and time.
 function formatTimestamp(timestamp) {
-    if (!timestamp) return ''; // Return empty string if timestamp is null
-    
+    if (!timestamp) return '';
     const postDate = timestamp.toDate();
+    const now = new Date();
+    const secondsAgo = Math.round((now - postDate) / 1000);
 
-    const dateOptions = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    };
-    
-    const timeOptions = {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    };
+    if (secondsAgo < 60) return `${secondsAgo}s ago`;
+    if (secondsAgo < 3600) return `${Math.floor(secondsAgo / 60)}m ago`;
+    if (secondsAgo < 86400) return `${Math.floor(secondsAgo / 3600)}h ago`;
+    if (secondsAgo < 604800) return `${Math.floor(secondsAgo / 86400)}d ago`;
 
-    const formattedDate = postDate.toLocaleDateString('en-US', dateOptions);
-    const formattedTime = postDate.toLocaleTimeString('en-US', timeOptions);
-
-    return `${formattedDate} at ${formattedTime}`;
+    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    return postDate.toLocaleDateString('en-US', dateOptions);
 }
 
 function showFeedback(message, type = 'error', duration = 4000) {
@@ -120,7 +150,7 @@ function showFeedback(message, type = 'error', duration = 4000) {
 
 async function handlePostSubmission(event) {
     event.preventDefault();
-    const lastPostTime = localStorage.getItem('lastPostTimestamp');
+    const lastPostTime = localStorage.getItem(STORAGE_KEYS.LAST_POST_TIMESTAMP);
     if (lastPostTime && (Date.now() - parseInt(lastPostTime)) / 1000 < POST_COOLDOWN_SECONDS) {
         const secondsRemaining = Math.ceil(POST_COOLDOWN_SECONDS - (Date.now() - parseInt(lastPostTime)) / 1000);
         showFeedback(`Please wait ${secondsRemaining}s to post again.`, 'error');
@@ -131,6 +161,7 @@ async function handlePostSubmission(event) {
     if (contentToSubmit === '') { showFeedback("You can't share an empty thought!", 'error'); return; }
     if (wordCount > MAX_WORDS) { showFeedback(`Post exceeds the ${MAX_WORDS}-word limit.`, 'error'); return; }
 
+    const originalText = postContent.value; // Save original text in case of error
     postContent.value = '';
     charCounter.textContent = `0 / ${MAX_CHARS}`;
     shareButton.disabled = true;
@@ -138,70 +169,120 @@ async function handlePostSubmission(event) {
     showFeedback("Sharing your thought...", 'success', 0);
 
     try {
-        await addDoc(collection(db, 'posts'), { content: contentToSubmit, timestamp: serverTimestamp(), reportCount: 0 });
-        localStorage.setItem('lastPostTimestamp', Date.now().toString());
+        const newPostData = {
+            content: contentToSubmit,
+            timestamp: { toDate: () => new Date() }, // Create a client-side timestamp for immediate display
+            reportCount: 0,
+            authorId: ANONYMOUS_USER_ID
+        };
+
+        // [NEW] Optimistic UI: Create and prepend the post card immediately.
+        const newCard = createPostCard({ id: 'temp-id', data: newPostData });
+        postFeed.prepend(newCard);
+        
+        // Remove the "no posts yet" or "no posts found" messages if they are showing
+        const feedStatusMessage = postFeed.querySelector('.feed-status');
+        if (feedStatusMessage) {
+            feedStatusMessage.remove();
+        }
+        noPostsFoundMessage.style.display = 'none';
+
+        await addDoc(collection(db, COLLECTIONS.POSTS), {
+            content: contentToSubmit,
+            timestamp: serverTimestamp(), // Use the real server timestamp for the database
+            reportCount: 0,
+            authorId: ANONYMOUS_USER_ID
+        });
+        localStorage.setItem(STORAGE_KEYS.LAST_POST_TIMESTAMP, Date.now().toString());
         showFeedback('Your post was shared!', 'success');
     } catch (error) {
         console.error("Error adding document: ", error);
         showFeedback("Error sharing post. Your text is restored.", 'error');
-        postContent.value = contentToSubmit;
-        charCounter.textContent = `${contentToSubmit.length} / ${MAX_CHARS}`;
+        postContent.value = originalText; // Restore original text on error
+        charCounter.textContent = `${originalText.length} / ${MAX_CHARS}`;
+        
+        // [NEW] If the post failed, remove the optimistic card we added.
+        const optimisticCard = postFeed.querySelector('[data-id="temp-id"]');
+        if (optimisticCard) {
+            optimisticCard.remove();
+        }
+
     } finally {
         shareButton.disabled = false;
         shareButton.textContent = "Share Anonymously";
     }
 }
 
-function listenForPosts() {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById('post-feed');
-        if (snapshot.empty) {
-            feed.innerHTML = `<p class="feed-status">No thoughts shared yet. Be the first!</p>`;
-            return;
+
+function createPostCard(post) {
+    const { id, data } = post;
+    const reportedPosts = JSON.parse(localStorage.getItem(STORAGE_KEYS.REPORTED_POSTS)) || [];
+
+    const card = postCardTemplate.content.cloneNode(true).firstElementChild;
+    card.dataset.id = id;
+
+    const contentP = card.querySelector('.post-content');
+    const timestampSpan = card.querySelector('.post-timestamp');
+    const reportButton = card.querySelector('.report-button');
+
+    contentP.textContent = data.content;
+    timestampSpan.textContent = formatTimestamp(data.timestamp);
+    reportButton.dataset.id = id;
+
+    if (reportedPosts.includes(id)) {
+        reportButton.disabled = true;
+        reportButton.textContent = 'Reported';
+    }
+
+    if (data.authorId === ANONYMOUS_USER_ID) {
+        card.classList.add('my-post');
+    }
+
+    return card;
+}
+
+async function fetchPosts() {
+    if (isLoadingPosts || allPostsLoaded) return;
+
+    isLoadingPosts = true;
+    feedLoader.style.display = 'block';
+    noPostsFoundMessage.style.display = 'none';
+
+    try {
+        let q;
+        const postsRef = collection(db, COLLECTIONS.POSTS);
+        
+        if (lastVisiblePost) {
+            q = query(postsRef, orderBy('timestamp', 'desc'), startAfter(lastVisiblePost), limit(POSTS_PER_PAGE));
+        } else {
+            postFeed.innerHTML = ''; // Clear feed only on first load
+            q = query(postsRef, orderBy('timestamp', 'desc'), limit(POSTS_PER_PAGE));
         }
 
-        feed.innerHTML = '';
-        const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+        const documentSnapshots = await getDocs(q);
 
-        snapshot.forEach((doc) => {
-            const postData = doc.data();
-            const postId = doc.id;
-
-            if (postData.reportCount < 3) {
-                const card = document.createElement('div');
-                card.className = 'post-card';
-
-                const reportButton = document.createElement('button');
-                reportButton.className = 'report-button';
-                reportButton.dataset.id = postId;
-                reportButton.setAttribute('aria-label', 'Report post');
-                
-                const contentP = document.createElement('p');
-                contentP.textContent = postData.content;
-
-                const timestampSpan = document.createElement('span');
-                timestampSpan.className = 'post-timestamp';
-                timestampSpan.textContent = formatTimestamp(postData.timestamp);
-
-                if (reportedPosts.includes(postId)) {
-                    reportButton.disabled = true;
-                    reportButton.textContent = 'Reported';
-                } else {
-                    reportButton.disabled = false;
-                    reportButton.textContent = 'Report';
-                }
-                
-                card.appendChild(reportButton);
-                card.appendChild(contentP);
-                card.appendChild(timestampSpan);
-                feed.appendChild(card);
+        if (documentSnapshots.empty) {
+            allPostsLoaded = true;
+            endOfFeedMessage.style.display = 'block';
+            if (postFeed.childElementCount === 0) {
+                postFeed.innerHTML = `<p class="feed-status">No thoughts shared yet. Be the first!</p>`;
             }
-        });
-    }, (error) => {
-        console.error("Error listening: ", error);
-        document.getElementById('post-feed').innerHTML = `<p class="feed-status">Could not fetch posts.</p>`;
-    });
+        } else {
+            documentSnapshots.forEach(doc => {
+                if (doc.data().reportCount < 3) {
+                    const card = createPostCard({ id: doc.id, data: doc.data() });
+                    postFeed.appendChild(card);
+                }
+            });
+            lastVisiblePost = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+        }
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        postFeed.innerHTML = `<p class="feed-status">Could not fetch posts.</p>`;
+    } finally {
+        isLoadingPosts = false;
+        feedLoader.style.display = 'none';
+    }
 }
 
 function handleReportClick(e) {
@@ -209,22 +290,56 @@ function handleReportClick(e) {
     const btn = e.target;
     const postId = btn.dataset.id;
     if (btn.disabled) return;
+    
     btn.disabled = true;
     btn.textContent = 'Reported';
-    const reportedPosts = JSON.parse(localStorage.getItem('reportedPosts')) || [];
+
+    const reportedPosts = JSON.parse(localStorage.getItem(STORAGE_KEYS.REPORTED_POSTS)) || [];
     if (!reportedPosts.includes(postId)) {
         reportedPosts.push(postId);
-        localStorage.setItem('reportedPosts', JSON.stringify(reportedPosts));
+        localStorage.setItem(STORAGE_KEYS.REPORTED_POSTS, JSON.stringify(reportedPosts));
     }
-    updateDoc(doc(db, 'posts', postId), { reportCount: increment(1) })
+    
+    updateDoc(doc(db, COLLECTIONS.POSTS, postId), { reportCount: increment(1) })
         .catch(error => {
             console.error("Error reporting post: ", error);
             btn.disabled = false;
             btn.textContent = 'Report';
             const updatedReportedPosts = reportedPosts.filter(id => id !== postId);
-            localStorage.setItem('reportedPosts', JSON.stringify(updatedReportedPosts));
+            localStorage.setItem(STORAGE_KEYS.REPORTED_POSTS, JSON.stringify(updatedReportedPosts));
             showFeedback('Could not report post. Please try again.', 'error');
         });
+}
+
+function handleMyPostsToggle() {
+    myPostsFilterActive = !myPostsFilterActive;
+    document.body.classList.toggle('my-posts-view', myPostsFilterActive);
+    toggleMyPostsButton.classList.toggle('active', myPostsFilterActive);
+
+    if (myPostsFilterActive) {
+        toggleMyPostsButton.textContent = 'All Posts';
+        const myPosts = postFeed.querySelectorAll('.my-post');
+        if (myPosts.length === 0) {
+            noPostsFoundMessage.style.display = 'block';
+        }
+        feedLoader.style.display = 'none';
+        endOfFeedMessage.style.display = 'none';
+    } else {
+        toggleMyPostsButton.textContent = 'My Posts';
+        noPostsFoundMessage.style.display = 'none';
+        if (allPostsLoaded && postFeed.childElementCount > 0) {
+            endOfFeedMessage.style.display = 'block';
+        }
+    }
+}
+
+function handleScroll() {
+    if (myPostsFilterActive) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    if (scrollTop + clientHeight >= scrollHeight - 250) {
+        fetchPosts();
+    }
 }
 
 // =====================================================================
@@ -232,7 +347,7 @@ function handleReportClick(e) {
 // =====================================================================
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
-    listenForPosts();
+    fetchPosts();
     
     document.getElementById('post-form').addEventListener('submit', handlePostSubmission);
     postFeed.addEventListener('click', handleReportClick);
@@ -241,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalButton.addEventListener('click', closeModal);
     feedbackModalOverlay.addEventListener('click', (e) => { if (e.target === feedbackModalOverlay) closeModal(); });
     feedbackForm.addEventListener('submit', handleFeedbackSubmission);
+    toggleMyPostsButton.addEventListener('click', handleMyPostsToggle);
     
     postContent.addEventListener('input', () => {
         const currentLength = postContent.value.length;
@@ -255,4 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    window.addEventListener('scroll', handleScroll);
 });
