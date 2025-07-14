@@ -26,3 +26,5 @@ dist-ssr
 # Other
 *.terabox.uploading.cfg
 .env
+admin.html
+vite.config.js
