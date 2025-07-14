@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HearMeOuttt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="src/style.css" />
+  
 </head>
 <body>
 
@@ -13,7 +18,11 @@
   <header>
     <div class="header-content">
       <h1>HearMeOuttt</h1>
-      <a href="#" id="open-feedback-modal">Feedback & Bugs</a>
+      <nav class="header-nav">
+        <!-- "My Posts" filter button -->
+        <button id="toggle-my-posts-button" class="nav-button">My Posts</button>
+        <a href="#" id="open-feedback-modal">Feedback & Bugs</a>
+      </nav>
     </div>
   </header>
 
@@ -21,7 +30,6 @@
     <section class="submission-area">
       <form id="post-form">
         <label for="post-content" class="visually-hidden">Anonymous Post Content</label>
-        <!-- MODIFIED: Placeholder text updated for new shortcut -->
         <textarea id="post-content" name="post-content" rows="6" maxlength="1200"
           placeholder="Compose your thoughts... (Ctrl+Enter to send)"></textarea>
         
@@ -38,8 +46,27 @@
       <div id="post-feed">
         <!-- Posts will be rendered here by JavaScript -->
       </div>
+      <div id="feed-loader" class="loader-container" style="display: none;">
+
+        <div class="loader"></div> 
+      </div>
+      <!-- Message for when no posts are found in "My Posts" view -->
+      <div id="no-posts-found" class="feed-status" style="display: none;">
+          <p>You haven't posted anything from this browser yet.</p>
+      </div>
+      <div id="end-of-feed" class="feed-status" style="display: none;">
+        <p>You've reached the end.</p>
+      </div>
     </section>
   </main>
+
+  <template id="post-card-template">
+    <div class="post-card">
+      <button class="report-button" aria-label="Report post">Report</button>
+      <p class="post-content"></p>
+      <span class="post-timestamp"></span>
+    </div>
+  </template>
 
   <div id="feedback-modal-overlay" class="modal-overlay">
     <div id="feedback-modal" class="modal-content">
