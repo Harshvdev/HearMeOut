@@ -27,4 +27,7 @@ dist-ssr
 *.terabox.uploading.cfg
 .env
 admin.html
+admin.css
+admin.js
 vite.config.js
+serviceAccountKey.json
