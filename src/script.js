@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-import { getFirestore, collection, serverTimestamp, query, orderBy, getDocs, doc, increment, limit, startAfter, writeBatch, setDoc, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, serverTimestamp, query, orderBy, getDocs, doc, increment, limit, startAfter, writeBatch, setDoc, runTransaction, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_API_KEY,
@@ -62,8 +62,7 @@ const noPostsFoundMessage = document.getElementById('no-posts-found');
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUserId = user.uid;
-        console.log("Authenticated with secure UID:", currentUserId);
-        // Once authenticated, enable posting and reporting
+        // console.log("Authenticated with secure UID:", currentUserId); // Good for debugging
         shareButton.disabled = false;
         postFeed.style.pointerEvents = 'auto';
     } else {
@@ -104,7 +103,6 @@ async function handlePostSubmission(event) {
         const newPrivatePostRef = doc(collection(db, COLLECTIONS.POSTS_PRIVATE));
         const newPublicPostRef = doc(collection(db, COLLECTIONS.POSTS_PUBLIC), newPrivatePostRef.id);
         
-        // Use the secure currentUserId from auth state
         const privatePostData = { content: contentToSubmit, timestamp: serverTimestamp(), reportCount: 0, authorId: currentUserId, isImmune: false };
         const publicPostData = { content: contentToSubmit, timestamp: serverTimestamp(), reportCount: 0, isImmune: false };
         
@@ -144,7 +142,9 @@ async function fetchPosts() {
 
     try {
         let q;
+        // THIS IS CORRECT. IT READS FROM THE PUBLIC COLLECTION.
         const postsRef = collection(db, COLLECTIONS.POSTS_PUBLIC);
+        
         if (lastVisiblePost) {
             q = query(postsRef, orderBy('timestamp', 'desc'), startAfter(lastVisiblePost), limit(POSTS_PER_PAGE));
         } else {
@@ -188,7 +188,7 @@ function createPostCard(post) {
     const contentP = card.querySelector('.post-content');
     const timestampSpan = card.querySelector('.post-timestamp');
     const reportButton = card.querySelector('.report-button');
-    contentP.textContent = data.content; // Safe usage
+    contentP.textContent = data.content;
     timestampSpan.textContent = formatTimestamp(data.timestamp);
     reportButton.dataset.id = id;
     if (reportedPosts.includes(id)) {
@@ -201,6 +201,7 @@ function createPostCard(post) {
     return card;
 }
 
+// --- THIS IS THE CORRECTED FUNCTION ---
 async function handleReportClick(e) {
     if (!e.target.classList.contains('report-button')) return;
     const btn = e.target;
@@ -211,24 +212,31 @@ async function handleReportClick(e) {
     btn.disabled = true;
 
     try {
-        // The security rule now prevents duplicate reports from the same auth.uid
         await runTransaction(db, async (transaction) => {
             const postRef = doc(db, COLLECTIONS.POSTS_PUBLIC, postId);
-            // Use the secure UID for the receipt path
             const reportReceiptRef = doc(db, COLLECTIONS.POSTS_PUBLIC, postId, 'reporters', currentUserId);
-            
+
+            // First, check if the user has already reported this post.
             const receiptDoc = await transaction.get(reportReceiptRef);
             if (receiptDoc.exists()) {
-                // This transaction will fail and throw an error, which is caught below.
-                throw new Error("Already reported"); 
+                throw new Error("Already reported");
             }
             
-            // This is now an atomic operation protected by security rules
+            // Second, get the current post data to calculate the new count.
+            const postDoc = await transaction.get(postRef);
+            if (!postDoc.exists()) {
+                throw new Error("Post does not exist.");
+            }
+
+            // Calculate the new count. This provides a real number that will pass security rules.
+            const newCount = (postDoc.data().reportCount || 0) + 1;
+
+            // Perform the writes.
             transaction.set(reportReceiptRef, { reporterId: currentUserId, timestamp: serverTimestamp() });
-            transaction.update(postRef, { reportCount: increment(1) });
+            transaction.update(postRef, { reportCount: newCount });
         });
 
-        // If transaction succeeds, update UI
+        // If the transaction succeeds, update the UI.
         btn.textContent = 'Reported';
         const reportedPosts = JSON.parse(localStorage.getItem(STORAGE_KEYS.REPORTED_POSTS)) || [];
         if (!reportedPosts.includes(postId)) {
@@ -236,19 +244,24 @@ async function handleReportClick(e) {
             localStorage.setItem(STORAGE_KEYS.REPORTED_POSTS, JSON.stringify(reportedPosts));
         }
 
+        // Immediately hide the card if the threshold is met
+        const card = btn.closest('.post-card');
+        if (card && parseInt(card.dataset.reportCount || 0) + 1 >= HIDE_THRESHOLD) {
+             card.style.display = 'none';
+        }
+
     } catch (error) {
         console.error("Report transaction failed: ", error.message);
-        // If the error is 'Already reported', we can silently fail or update the UI anyway.
         if (error.message === "Already reported") {
             btn.textContent = 'Reported';
         } else {
-            // Re-enable button on other errors
+            // Re-enable button on other unexpected errors so user can try again
             btn.disabled = false;
         }
     }
 }
 
-// Helper functions (no changes needed here, but included for completeness)
+// Helper functions
 function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem(STORAGE_KEYS.THEME, theme); themeToggleButton.textContent = theme === 'dark' ? '☀️' : '🌙'; }
 function initializeTheme() { const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); applyTheme(savedTheme); }
 function openModal() { feedbackModalOverlay.classList.add('open'); }
