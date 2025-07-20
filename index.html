@@ -3,11 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HearMeOuttt</title>
+
+  <!-- ===================== SEO & Brand Metadata ====================== -->
+
+  <!-- Primary Meta Tags -->
+  <title>HearMeOuttt - Share Your Thoughts Anonymously</title>
+  <meta name="description" content="HearMeOuttt is a safe and anonymous platform to share your thoughts, feelings, and daily experiences without registration. A judgment-free space to speak your mind." />
+  <meta name="keywords" content="HearMeOuttt, anonymous posts, share thoughts, anonymous social, mental health, venting, anonymous chat, judgment-free" />
+  <meta name="author" content="Harsh Vardhan Shukla" />
+  <meta name="copyright" content="Copyright © 2025 Harsh Vardhan Shukla. All rights reserved." />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Canonical URL: The official URL for your site. -->
+  <link rel="canonical" href="https://hearmeouttt.netlify.app" />
+
+  <!-- Favicons: Create these and place them in your root public folder. -->
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- Open Graph Tags (for Facebook, LinkedIn, etc.) -->
+  <meta property="og:title" content="HearMeOuttt - Share Your Thoughts Anonymously" />
+  <meta property="og:description" content="A judgment-free space to share your thoughts, feelings, and daily experiences without needing an account." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hearmeouttt.netlify.app" />
+  <meta property="og:site_name" content="HearMeOuttt" />
+  <meta property="og:image" content="https://hearmeouttt.netlify.app/hearmeouttt-social-preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HearMeOuttt - Share Your Thoughts Anonymously" />
+  <meta name="twitter:description" content="A judgment-free space to share your thoughts, feelings, and daily experiences without needing an account." />
+  <meta name="twitter:image" content="https://hearmeouttt.netlify.app/hearmeouttt-social-preview.png" />
+  
+  <!-- Google Site Verification -->
+  <meta name="google-site-verification" content="Dkr6begNrbMXCeyhxMlNqEljHa1aoNQ4AGjN5QlbUAc" />
+
+  <!-- Schema.org JSON-LD Markup: The strongest signal for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "HearMeOuttt",
+    "alternateName": "HearMeOuttt",
+    "url": "https://hearmeouttt.netlify.app",
+    "description": "HearMeOuttt is a safe and anonymous platform to share your thoughts, feelings, and daily experiences without registration. A judgment-free space to speak your mind.",
+    "keywords": "HearMeOuttt, anonymous posts, share thoughts, anonymous social, mental health, venting, anonymous chat, judgment-free",
+    "inLanguage": "en-US",
+    "isBasedOn": "https://github.com/Harshvdev/HearMeOut",
+    "author": {
+      "@type": "Person",
+      "name": "Harsh Vardhan Shukla",
+      "url": "https://github.com/Harshvdev"
+    },
+    "mainEntity": {
+      "@type": "WebPage",
+      "name": "Homepage"
+    }
+  }
+  </script>
+
+  <!-- =================================================================== -->
+  <!-- ===================== Stylesheets & Fonts ======================= -->
+  <!-- =================================================================== -->
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="src/style.css" />
   
 </head>
@@ -19,7 +84,6 @@
     <div class="header-content">
       <h1>HearMeOuttt</h1>
       <nav class="header-nav">
-        <!-- "My Posts" filter button -->
         <button id="toggle-my-posts-button" class="nav-button">My Posts</button>
         <a href="#" id="open-feedback-modal">Feedback & Bugs</a>
       </nav>
@@ -47,10 +111,8 @@
         <!-- Posts will be rendered here by JavaScript -->
       </div>
       <div id="feed-loader" class="loader-container" style="display: none;">
-
         <div class="loader"></div> 
       </div>
-      <!-- Message for when no posts are found in "My Posts" view -->
       <div id="no-posts-found" class="feed-status" style="display: none;">
           <p>You haven't posted anything from this browser yet.</p>
       </div>
