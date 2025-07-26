@@ -17,14 +17,32 @@
   <!-- Important: Sets the color of the browser chrome on mobile -->
   <meta name="theme-color" content="#2563eb">
 
+  <!-- ================= Favicons, Manifest, and Apple Touch Icons ================= -->
+
+  <!-- This is the most robust setup to satisfy all checkers and devices -->
+
+  <!-- 1. The classic ICO for older browsers and maximum compatibility -->
+  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+  
+  <!-- 2. A PNG favicon for modern browsers -->
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  
+  <!-- 3. SVG icon for high-resolution displays -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+  <!-- 4. Apple Touch Icon (for "Add to Home Screen" on iOS) -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- 5. Title for the web app when saved to the iOS home screen -->
+  <meta name="apple-mobile-web-app-title" content="HearMeOuttt">
+  
+  <!-- 6. Web App Manifest for Android and PWA functionality -->
+  <link rel="manifest" href="/site.webmanifest" />
+  
+  <!-- =========================================================================== -->
+
   <!-- Canonical URL: The official URL for your site. -->
   <link rel="canonical" href="https://hearmeouttt.netlify.app" />
-
-  <!-- Favicons & Web App Manifest (Corrected) -->
-  <link rel="icon" href="/favicon.ico" sizes="any" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
 
   <!-- Open Graph Tags (for Facebook, LinkedIn, etc.) -->
   <meta property="og:title" content="HearMeOuttt - Share Your Thoughts Anonymously" />
