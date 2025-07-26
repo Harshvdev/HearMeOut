@@ -13,14 +13,18 @@
   <meta name="author" content="Harsh Vardhan Shukla" />
   <meta name="copyright" content="Copyright © 2025 Harsh Vardhan Shukla. All rights reserved." />
   <meta name="robots" content="index, follow" />
+  
+  <!-- Important: Sets the color of the browser chrome on mobile -->
+  <meta name="theme-color" content="#2563eb">
 
   <!-- Canonical URL: The official URL for your site. -->
   <link rel="canonical" href="https://hearmeouttt.netlify.app" />
 
-  <!-- Favicons: Create these and place them in your root public folder. -->
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <!-- Favicons & Web App Manifest (Corrected) -->
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
 
   <!-- Open Graph Tags (for Facebook, LinkedIn, etc.) -->
   <meta property="og:title" content="HearMeOuttt - Share Your Thoughts Anonymously" />
@@ -38,7 +42,7 @@
   <meta name="twitter:title" content="HearMeOuttt - Share Your Thoughts Anonymously" />
   <meta name="twitter:description" content="A judgment-free space to share your thoughts, feelings, and daily experiences without needing an account." />
   <meta name="twitter:image" content="https://hearmeouttt.netlify.app/hearmeouttt-social-preview.png" />
-  
+
   <!-- Google Site Verification -->
   <meta name="google-site-verification" content="Dkr6begNrbMXCeyhxMlNqEljHa1aoNQ4AGjN5QlbUAc" />
 
@@ -66,15 +70,11 @@
   }
   </script>
 
-  <!-- =================================================================== -->
   <!-- ===================== Stylesheets & Fonts ======================= -->
-  <!-- =================================================================== -->
-  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="src/style.css" />
-  
 </head>
 <body>
 
@@ -96,7 +96,7 @@
         <label for="post-content" class="visually-hidden">Anonymous Post Content</label>
         <textarea id="post-content" name="post-content" rows="6" maxlength="1200"
           placeholder="Compose your thoughts... (Ctrl+Enter to send)"></textarea>
-        
+
         <div class="form-footer">
           <span id="feedback-message"></span>
           <span id="char-counter">0 / 1200</span>
@@ -111,10 +111,10 @@
         <!-- Posts will be rendered here by JavaScript -->
       </div>
       <div id="feed-loader" class="loader-container" style="display: none;">
-        <div class="loader"></div> 
+        <div class="loader"></div>
       </div>
       <div id="no-posts-found" class="feed-status" style="display: none;">
-          <p>You haven't posted anything from this browser yet.</p>
+        <p>You haven't posted anything from this browser yet.</p>
       </div>
       <div id="end-of-feed" class="feed-status" style="display: none;">
         <p>You've reached the end.</p>
@@ -140,7 +140,8 @@
           <label><input type="radio" name="feedbackType" value="bug" checked> Bug Report</label>
           <label><input type="radio" name="feedbackType" value="feature"> Feature Suggestion</label>
         </div>
-        <textarea id="feedback-text" name="feedbackText" rows="5" placeholder="Please be as detailed as possible..." required></textarea>
+        <textarea id="feedback-text" name="feedbackText" rows="5" placeholder="Please be as detailed as possible..."
+          required></textarea>
         <button type="submit" id="submit-feedback-button">Submit</button>
         <div id="feedback-form-status"></div>
       </form>
@@ -148,5 +149,6 @@
   </div>
 
   <script type="module" src="src/script.js"></script>
+
 </body>
 </html>
